@@ -20,7 +20,7 @@ However I also made 2 commands for convenience as well.
 
 ## Planned
 These are things I plan to add for now...
-- [ ] IPC Interface
+- [ ] IPC Api
 - [ ] Setting for accepting any friend request.
 ## Inspirations & Sources
 - [ASF-PluginTemplate](https://github.com/JustArchiNET/ASF-PluginTemplate)
