@@ -15,12 +15,14 @@ By default when you install this mod if you send any of your running bots a frie
 
 However I also made 2 commands for convenience as well.
 
-- `addfriend [botname] [botnames]` - Adds a bot to friend list.
-- `delfriend [botname] [botnames]` - Removes a bot from friend list.
+- `addfriend [botname] [botnames | STEAMIDS]` - Adds a bot to friend list.
+- `remfriend [botname] [botnames | STEAMIDS]` - Removes a bot from friend list.
 
 ## Planned
 These are things I plan to add for now...
-- [ ] IPC Api
+- [x] IPC Api
+- [ ] Utilites.Inparallel
+- [ ] StringBuilder Alternative
 - [ ] Setting for accepting any friend request.
 ## Inspirations & Sources
 - [ASF-PluginTemplate](https://github.com/JustArchiNET/ASF-PluginTemplate)
