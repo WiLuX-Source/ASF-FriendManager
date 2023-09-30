@@ -31,19 +31,19 @@ internal sealed class FriendManager : IBotCommand2, IBotFriendRequest {
 		}
 
 		return args[0].ToUpperInvariant() switch {
-			"ADDFRIEND" when args.Length > 2 => await AddFriendWithBot(access, args[1], args[2]).ConfigureAwait(false),
+			"ADDFRIEND" when args.Length > 2 => await AddFriendWithBot(access, args[1], args[2], false).ConfigureAwait(false),
 			"ADDFRIEND" => await AddFriendWithoutBot(bot, access, args[1]).ConfigureAwait(false),
-			"DELFRIEND" when args.Length > 2 => await DelFriendWithBot(access, args[1], args[2]).ConfigureAwait(false),
-			"DELFRIEND" => await DelFriendWithoutBot(bot, access, args[1]).ConfigureAwait(false),
+			"REMFRIEND" when args.Length > 2 => await RemFriendWithBot(access, args[1], args[2], false).ConfigureAwait(false),
+			"REMFRIEND" => await RemFriendWithoutBot(bot, access, args[1]).ConfigureAwait(false),
 			_ => null
 		};
 	}
 
-	private static async Task<string?> AddFriendWithBot(EAccess access, string botName, string targetBots) {
+	public static async Task<string?> AddFriendWithBot(EAccess access, string botName, string targetBots, bool ipc) {
 		if (string.IsNullOrEmpty(botName) || string.IsNullOrEmpty(targetBots)) {
 			ASF.ArchiLogger.LogNullError(null, nameof(botName) + " || " + nameof(targetBots));
 
-			FormatStaticResponse("Incorrect parameters.");
+			return ipc ? "Incorrect parameters" : FormatStaticResponse("Incorrect parameters.");
 		}
 
 		Bot? bot = Bot.GetBot(botName);
@@ -53,34 +53,67 @@ internal sealed class FriendManager : IBotCommand2, IBotFriendRequest {
 		}
 
 		if (bot == null) {
-			return FormatStaticResponse("Bot not found.");
+			return ipc ? "Bot not found." : FormatStaticResponse("Bot not found.");
 		}
 
 		if (!bot.IsConnectedAndLoggedOn) {
-			return FormatBotResponse(bot, "Bot is not logged in.");
+			return ipc ? "Bot is not logged in." : FormatBotResponse(bot, "Bot is not logged in.");
 		}
 
-		HashSet<Bot>? targetBotList = Bot.GetBots(targetBots)?.Where(x => x.SteamID != bot.SteamID).ToHashSet();
+		string[] determineList = targetBots.Split(',').Select(static s => s.Trim()).ToArray();
+		List<string> steamIDs = new List<string>();
+		List<string> stringBotList = new List<string>();
 
-		if ((targetBotList == null) || (targetBotList.Count == 0)) {
-			return FormatBotResponse(bot, "Target bots not found.");
+		foreach (string item in determineList) {
+			if (item.Length == 17) {
+				steamIDs.Add(item);
+			} else {
+				stringBotList.Add(item);
+			}
 		}
 
 		StringBuilder sb = new StringBuilder();
-#pragma warning disable CA1305
-		foreach (Bot targetBot in targetBotList) {
-			EFriendRelationship relation = bot.SteamFriends.GetFriendRelationship(targetBot.SteamID);
 
-			if (relation is EFriendRelationship.Friend or EFriendRelationship.RequestInitiator) {
-				sb.AppendLine($"You already sent/friend with {targetBot.BotName}.");
-			} else {
-				bot.SteamFriends.AddFriend(targetBot.SteamID);
-				sb.AppendLine($"Successfully added {targetBot.BotName} as friend.");
-				await Task.Delay(200).ConfigureAwait(false);
+		if (stringBotList.Count > 0) {
+			HashSet<Bot>? targetBotList = Bot.GetBots(string.Join(",", stringBotList))?.Where(x => x.SteamID != bot.SteamID).ToHashSet();
+
+			if ((targetBotList == null) || (targetBotList.Count == 0)) {
+				return ipc ? "Target bots not found." : FormatBotResponse(bot, "Target bots not found.");
+			}
+#pragma warning disable CA1305
+			foreach (Bot targetBot in targetBotList) {
+				EFriendRelationship relation = bot.SteamFriends.GetFriendRelationship(targetBot.SteamID);
+
+				if (relation is EFriendRelationship.Friend or EFriendRelationship.RequestInitiator) {
+					sb.AppendLine($"You already sent/friend with {targetBot.BotName}.");
+				} else {
+					bot.SteamFriends.AddFriend(targetBot.SteamID);
+					sb.AppendLine($"Successfully added {targetBot.BotName} as friend.");
+					await Task.Delay(200).ConfigureAwait(false);
+				}
 			}
 		}
+
+		if (steamIDs.Count > 0) {
+			foreach (string steamID in steamIDs) {
+				if (new SteamID(ulong.Parse(steamID)).IsValid) {
+					EFriendRelationship relation = bot.SteamFriends.GetFriendRelationship(ulong.Parse(steamID));
+
+					if (relation is EFriendRelationship.Friend or EFriendRelationship.RequestInitiator) {
+						sb.AppendLine($"You already sent/friend with {steamID}.");
+					} else {
+						bot.SteamFriends.AddFriend(ulong.Parse(steamID));
+						sb.AppendLine($"Successfully added {steamID} as friend.");
+						await Task.Delay(200).ConfigureAwait(false);
+					}
+				} else {
+					sb.AppendLine($"{steamID} Is invalid.");
+				}
+			}
+		}
+
 #pragma warning restore CA1305
-		return FormatBotResponse(bot, sb.ToString());
+		return ipc ? sb.ToString().TrimEnd() : FormatBotResponse(bot, sb.ToString().TrimEnd());
 	}
 
 	private static async Task<string?> AddFriendWithoutBot(Bot bot, EAccess access, string targetBots) {
@@ -98,34 +131,67 @@ internal sealed class FriendManager : IBotCommand2, IBotFriendRequest {
 			return FormatBotResponse(bot, "Bot is not logged in.");
 		}
 
-		HashSet<Bot>? targetBotList = Bot.GetBots(targetBots)?.Where(x => x.SteamID != bot.SteamID).ToHashSet();
+		string[] determineList = targetBots.Split(',').Select(static s => s.Trim()).ToArray();
+		List<string> steamIDs = new List<string>();
+		List<string> stringBotList = new List<string>();
 
-		if ((targetBotList == null) || (targetBotList.Count == 0)) {
-			return FormatBotResponse(bot, "Target bots not found.");
+		foreach (string item in determineList) {
+			if (item.Length == 17) {
+				steamIDs.Add(item);
+			} else {
+				stringBotList.Add(item);
+			}
 		}
 
 		StringBuilder sb = new StringBuilder();
-#pragma warning disable CA1305
-		foreach (Bot targetBot in targetBotList) {
-			EFriendRelationship relation = bot.SteamFriends.GetFriendRelationship(targetBot.SteamID);
 
-			if (relation is EFriendRelationship.Friend or EFriendRelationship.RequestInitiator) {
-				sb.AppendLine($"You already sent/friend with {targetBot.BotName}.");
-			} else {
-				bot.SteamFriends.AddFriend(targetBot.SteamID);
-				sb.AppendLine($"Successfully added {targetBot.BotName} as friend.");
-				await Task.Delay(200).ConfigureAwait(false);
+		if (stringBotList.Count > 0) {
+			HashSet<Bot>? targetBotList = Bot.GetBots(string.Join(",", stringBotList))?.Where(x => x.SteamID != bot.SteamID).ToHashSet();
+
+			if ((targetBotList == null) || (targetBotList.Count == 0)) {
+				return FormatBotResponse(bot, "Target bots not found.");
+			}
+#pragma warning disable CA1305
+			foreach (Bot targetBot in targetBotList) {
+				EFriendRelationship relation = bot.SteamFriends.GetFriendRelationship(targetBot.SteamID);
+
+				if (relation is EFriendRelationship.Friend or EFriendRelationship.RequestInitiator) {
+					sb.AppendLine($"You already sent/friend with {targetBot.BotName}.");
+				} else {
+					bot.SteamFriends.AddFriend(targetBot.SteamID);
+					sb.AppendLine($"Successfully added {targetBot.BotName} as friend.");
+					await Task.Delay(200).ConfigureAwait(false);
+				}
 			}
 		}
+
+		if (steamIDs.Count > 0) {
+			foreach (string steamID in steamIDs) {
+				if (new SteamID(ulong.Parse(steamID)).IsValid) {
+					EFriendRelationship relation = bot.SteamFriends.GetFriendRelationship(ulong.Parse(steamID));
+
+					if (relation is EFriendRelationship.Friend or EFriendRelationship.RequestInitiator) {
+						sb.AppendLine($"You already sent/friend with {steamID}.");
+					} else {
+						bot.SteamFriends.AddFriend(ulong.Parse(steamID));
+						sb.AppendLine($"Successfully added {steamID} as friend.");
+						await Task.Delay(200).ConfigureAwait(false);
+					}
+				} else {
+					sb.AppendLine($"{steamID} Is invalid.");
+				}
+			}
+		}
+
 #pragma warning restore CA1305
-		return FormatBotResponse(bot, sb.ToString());
+		return FormatBotResponse(bot, sb.ToString().TrimEnd());
 	}
 
-	private static async Task<string?> DelFriendWithBot(EAccess access, string botName, string targetBots) {
+	public static async Task<string?> RemFriendWithBot(EAccess access, string botName, string targetBots, bool ipc) {
 		if (string.IsNullOrEmpty(botName) || string.IsNullOrEmpty(targetBots)) {
 			ASF.ArchiLogger.LogNullError(null, nameof(botName) + " || " + nameof(targetBots));
 
-			FormatStaticResponse("Incorrect parameters.");
+			return ipc ? "Incorrect parameters" : FormatStaticResponse("Incorrect parameters.");
 		}
 
 		Bot? bot = Bot.GetBot(botName);
@@ -135,38 +201,71 @@ internal sealed class FriendManager : IBotCommand2, IBotFriendRequest {
 		}
 
 		if (bot == null) {
-			return FormatStaticResponse("Bot not found.");
+			return ipc ? "Bot not found." : FormatStaticResponse("Bot not found.");
 		}
 
 		if (!bot.IsConnectedAndLoggedOn) {
-			return FormatBotResponse(bot, "Bot is not logged in.");
+			return ipc ? "Bot is not logged in." : FormatBotResponse(bot, "Bot is not logged in.");
 		}
 
-		HashSet<Bot>? targetBotList = Bot.GetBots(targetBots)?.Where(x => x.SteamID != bot.SteamID).ToHashSet();
+		string[] determineList = targetBots.Split(',').Select(static s => s.Trim()).ToArray();
+		List<string> steamIDs = new List<string>();
+		List<string> stringBotList = new List<string>();
 
-		if ((targetBotList == null) || (targetBotList.Count == 0)) {
-			return FormatBotResponse(bot, "Target bots not found.");
+		foreach (string item in determineList) {
+			if (item.Length == 17) {
+				steamIDs.Add(item);
+			} else {
+				stringBotList.Add(item);
+			}
 		}
 
 		StringBuilder sb = new StringBuilder();
-#pragma warning disable CA1305
-		foreach (Bot targetBot in targetBotList) {
-			EFriendRelationship relation = bot.SteamFriends.GetFriendRelationship(targetBot.SteamID);
 
-			if (relation is EFriendRelationship.Friend) {
-				bot.SteamFriends.RemoveFriend(targetBot.SteamID);
-				sb.AppendLine($"Successfully removed {targetBot.BotName} from friends.");
-				ASF.ArchiLogger.LogGenericInfo($"[FriendManager] {bot.BotName} removed {targetBot.SteamID} from friends.");
-				await Task.Delay(200).ConfigureAwait(false);
-			} else {
-				sb.AppendLine($"You are not friends with {targetBot.BotName}.");
+		if (stringBotList.Count > 0) {
+			HashSet<Bot>? targetBotList = Bot.GetBots(string.Join(",", stringBotList))?.Where(x => x.SteamID != bot.SteamID).ToHashSet();
+
+			if ((targetBotList == null) || (targetBotList.Count == 0)) {
+				return ipc ? "Target bots not found." : FormatBotResponse(bot, "Target bots not found.");
+			}
+
+			foreach (Bot targetBot in targetBotList) {
+				EFriendRelationship relation = bot.SteamFriends.GetFriendRelationship(targetBot.SteamID);
+#pragma warning disable CA1305
+				if (relation is EFriendRelationship.Friend) {
+					bot.SteamFriends.RemoveFriend(targetBot.SteamID);
+					sb.AppendLine($"Successfully removed {targetBot.BotName} from friends.");
+					ASF.ArchiLogger.LogGenericInfo($"[FriendManager] {bot.BotName} removed {targetBot.SteamID} from friends.");
+					await Task.Delay(200).ConfigureAwait(false);
+				} else {
+					sb.AppendLine($"You are not friends with {targetBot.BotName}.");
+				}
+			}
+		}
+
+		if (steamIDs.Count > 0) {
+			foreach (string steamID in steamIDs) {
+				if (new SteamID(ulong.Parse(steamID)).IsValid) {
+					EFriendRelationship relation = bot.SteamFriends.GetFriendRelationship(ulong.Parse(steamID));
+
+					if (relation is EFriendRelationship.Friend) {
+						bot.SteamFriends.RemoveFriend(ulong.Parse(steamID));
+						sb.AppendLine($"Successfully removed {steamID} from friends.");
+						ASF.ArchiLogger.LogGenericInfo($"[FriendManager] {bot.BotName} removed {steamID} from friends.");
+						await Task.Delay(200).ConfigureAwait(false);
+					} else {
+						sb.AppendLine($"You are not friends with {steamID}.");
+					}
+				} else {
+					sb.AppendLine($"{steamID} Is invalid.");
+				}
 			}
 		}
 #pragma warning restore CA1305
-		return FormatBotResponse(bot, sb.ToString());
+		return ipc ? sb.ToString().TrimEnd() : FormatBotResponse(bot, sb.ToString().TrimEnd());
 	}
 
-	private static async Task<string?> DelFriendWithoutBot(Bot bot, EAccess access, string targetBots) {
+	private static async Task<string?> RemFriendWithoutBot(Bot bot, EAccess access, string targetBots) {
 		if (string.IsNullOrEmpty(targetBots)) {
 			ASF.ArchiLogger.LogNullError(null, nameof(targetBots));
 
@@ -181,28 +280,61 @@ internal sealed class FriendManager : IBotCommand2, IBotFriendRequest {
 			return FormatBotResponse(bot, "Bot is not logged in.");
 		}
 
-		HashSet<Bot>? targetBotList = Bot.GetBots(targetBots)?.Where(x => x.SteamID != bot.SteamID).ToHashSet();
+		string[] determineList = targetBots.Split(',').Select(static s => s.Trim()).ToArray();
+		List<string> steamIDs = new List<string>();
+		List<string> stringBotList = new List<string>();
 
-		if ((targetBotList == null) || (targetBotList.Count == 0)) {
-			return FormatBotResponse(bot, "Target bots not found.");
+		foreach (string item in determineList) {
+			if (item.Length == 17) {
+				steamIDs.Add(item);
+			} else {
+				stringBotList.Add(item);
+			}
 		}
 
 		StringBuilder sb = new StringBuilder();
-#pragma warning disable CA1305
-		foreach (Bot targetBot in targetBotList) {
-			EFriendRelationship relation = bot.SteamFriends.GetFriendRelationship(targetBot.SteamID);
 
-			if (relation is EFriendRelationship.Friend) {
-				bot.SteamFriends.RemoveFriend(targetBot.SteamID);
-				sb.AppendLine($"Successfully added {targetBot.BotName} as friend.");
-				ASF.ArchiLogger.LogGenericInfo($"[FriendManager] {bot.BotName} removed {targetBot.SteamID} from friends.");
-				await Task.Delay(200).ConfigureAwait(false);
-			} else {
-				sb.AppendLine($"You are not friends with {targetBot.BotName}.");
+		if (stringBotList.Count > 0) {
+			HashSet<Bot>? targetBotList = Bot.GetBots(string.Join(",", stringBotList))?.Where(x => x.SteamID != bot.SteamID).ToHashSet();
+
+			if ((targetBotList == null) || (targetBotList.Count == 0)) {
+				return FormatBotResponse(bot, "Target bots not found.");
+			}
+
+			foreach (Bot targetBot in targetBotList) {
+				EFriendRelationship relation = bot.SteamFriends.GetFriendRelationship(targetBot.SteamID);
+#pragma warning disable CA1305
+				if (relation is EFriendRelationship.Friend) {
+					bot.SteamFriends.RemoveFriend(targetBot.SteamID);
+					sb.AppendLine($"Successfully removed {targetBot.BotName} from friends.");
+					ASF.ArchiLogger.LogGenericInfo($"[FriendManager] {bot.BotName} removed {targetBot.SteamID} from friends.");
+					await Task.Delay(200).ConfigureAwait(false);
+				} else {
+					sb.AppendLine($"You are not friends with {targetBot.BotName}.");
+				}
+			}
+		}
+
+		if (steamIDs.Count > 0) {
+			foreach (string steamID in steamIDs) {
+				if (new SteamID(ulong.Parse(steamID)).IsValid) {
+					EFriendRelationship relation = bot.SteamFriends.GetFriendRelationship(ulong.Parse(steamID));
+
+					if (relation is EFriendRelationship.Friend) {
+						bot.SteamFriends.RemoveFriend(ulong.Parse(steamID));
+						sb.AppendLine($"Successfully removed {steamID} from friends.");
+						ASF.ArchiLogger.LogGenericInfo($"[FriendManager] {bot.BotName} removed {steamID} from friends.");
+						await Task.Delay(200).ConfigureAwait(false);
+					} else {
+						sb.AppendLine($"You are not friends with {steamID}.");
+					}
+				} else {
+					sb.AppendLine($"{steamID} Is invalid.");
+				}
 			}
 		}
 #pragma warning restore CA1305
-		return FormatBotResponse(bot, sb.ToString());
+		return FormatBotResponse(bot, sb.ToString().TrimEnd());
 	}
 
 	private static string FormatStaticResponse(string response) => ArchiSteamFarm.Steam.Interaction.Commands.FormatStaticResponse(response);
