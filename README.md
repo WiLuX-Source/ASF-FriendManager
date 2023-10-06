@@ -11,12 +11,12 @@ ArchiSteamFarm plugin that allows you to manage friends easily.
 Enjoy!
 
 ## How to use
-By default when you install this mod if you send any of your running bots a friend request they accept it automatically this behavior applies to all of the bots you have.
+ASF accepts from any friend request made from master but not from other bots unless they have special role in `EAccess`. When you install this mod it passively accepts friend request(s) from all of your bots.
 
 However I also made 2 commands for convenience as well.
 
-- `addfriend [botname] [botnames | STEAMIDS]` - Adds a bot to friend list.
-- `remfriend [botname] [botnames | STEAMIDS]` - Removes a bot from friend list.
+- `addfriend [botname] [botnames | STEAMIDS]` - Adds a bot(s)/user(s) to friend list.
+- `remfriend [botname] [botnames | STEAMIDS]` - Removes a user(s) from friend list.
 
 ## Planned
 These are things I plan to add for now...
