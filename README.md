@@ -15,8 +15,8 @@ ASF accepts from any friend request made from master but not from other bots unl
 
 However I also made 2 commands for convenience as well.
 
-- `addfriend [botname] [botnames | STEAMIDS]` - Adds a bot(s)/user(s) to friend list.
-- `remfriend [botname] [botnames | STEAMIDS]` - Removes a user(s) from friend list.
+- `addfriend [botname] [botnames | STEAMIDS]` - Adds bot(s)/user(s) to friend list.
+- `remfriend [botname] [botnames | STEAMIDS]` - Removes bot(s)/user(s) from friend list.
 
 ## Planned
 These are things I plan to add for now...
