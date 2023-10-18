@@ -4,7 +4,9 @@
 # Note: If you'd like to change the default channel from stable to pre-releases, simply change RELEASE_TYPE
 name: bump-asf-reference
 
-on: 
+on:
+  schedule:
+  - cron: '17 1 * * *'
   workflow_dispatch:
 
 env:
