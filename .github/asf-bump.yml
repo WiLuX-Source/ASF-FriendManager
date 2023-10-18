@@ -4,9 +4,7 @@
 # Note: If you'd like to change the default channel from stable to pre-releases, simply change RELEASE_TYPE
 name: bump-asf-reference
 
-on:
-
-  workflow_dispatch:
+on: [workflow_call, workflow_dispatch]
 
 env:
   # You can specify your own credentials if you'd like to, simply change ARCHIBOT_GPG_PRIVATE_KEY and/or ARCHIBOT_GITHUB_TOKEN secrets here to the ones you want to use
