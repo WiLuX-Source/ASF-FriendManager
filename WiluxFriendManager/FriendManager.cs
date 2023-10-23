@@ -65,13 +65,17 @@ internal sealed class FriendManager : IBotCommand2, IBotFriendRequest {
 		StringBuilder sb = new StringBuilder();
 
 		foreach (Bot bot in bots) {
-			if (Acceptany.Contains(bot.SteamID)) {
-				Acceptany.Remove(bot.SteamID);
+			if (bot.IsConnectedAndLoggedOn) {
+				if (Acceptany.Contains(bot.SteamID)) {
+					Acceptany.Remove(bot.SteamID);
 #pragma warning disable CA1305
-				sb.AppendLine($"{bot.BotName} turned off accepting requests.");
+					sb.AppendLine($"{bot.BotName} turned off accepting requests.");
+				} else {
+					Acceptany.Add(bot.SteamID);
+					sb.AppendLine($"{bot.BotName} turned on accepting requests.");
+				}
 			} else {
-				Acceptany.Add(bot.SteamID);
-				sb.AppendLine($"{bot.BotName} turned on accepting requests.");
+				sb.AppendLine($"{bot.BotName} is not logged in.");
 			}
 		}
 
