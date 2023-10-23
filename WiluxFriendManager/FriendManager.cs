@@ -19,6 +19,8 @@ internal sealed class FriendManager : IBotCommand2, IBotFriendRequest {
 	public string Name => nameof(FriendManager);
 	public Version Version => typeof(FriendManager).Assembly.GetName().Version ?? throw new InvalidOperationException(nameof(Version));
 
+	private static List<ulong> Acceptany = new List<ulong>();
+
 	public Task OnLoaded() {
 		ASF.ArchiLogger.LogGenericInfo($"{Name} by Wilux Loaded!");
 
@@ -35,13 +37,72 @@ internal sealed class FriendManager : IBotCommand2, IBotFriendRequest {
 			"ADDFRIEND" => await AddFriendWithoutBot(bot, access, args[1]).ConfigureAwait(false),
 			"REMFRIEND" when args.Length > 2 => await RemFriendWithBot(access, args[1], args[2], false).ConfigureAwait(false),
 			"REMFRIEND" => await RemFriendWithoutBot(bot, access, args[1]).ConfigureAwait(false),
+			"REMFRIENDALL" when args.Length > 0 => await RemFriendAllWithBot(access, args[1]).ConfigureAwait(false),
+			"REMFRIENDALL" => await RemFriendAllWithoutBot(bot, access).ConfigureAwait(false),
+			"ACCEPTALL" when args.Length > 0 => await ToggleAcceptAllWithBot(access, args[1], false).ConfigureAwait(false),
+			"ACCEPTALL" => await ToggleAcceptAllWithoutBot(bot, access, false).ConfigureAwait(false),
 			_ => null
 		};
 	}
 
-	public static async Task<string?> AddFriendWithBot(EAccess access, string botName, string targetBots, bool ipc) {
-		if (string.IsNullOrEmpty(botName) || string.IsNullOrEmpty(targetBots)) {
-			ASF.ArchiLogger.LogNullError(null, nameof(botName) + " || " + nameof(targetBots));
+	public static Task<string?> ToggleAcceptAllWithBot(EAccess access, string botNames, bool ipc) {
+		if (string.IsNullOrEmpty(botNames)) {
+			ASF.ArchiLogger.LogNullError(null, nameof(botNames));
+
+			return Task.FromResult(ipc ? "Incorrect parameters" : FormatStaticResponse("Incorrect parameters."))!;
+		}
+
+		if (access < EAccess.Master) {
+			return Task.FromResult<string?>(null);
+		}
+
+		HashSet<Bot>? bots = Bot.GetBots(botNames);
+
+		if (bots == null) {
+			return Task.FromResult(ipc ? "Bot not found." : FormatStaticResponse("Bot not found."))!;
+		}
+
+		StringBuilder sb = new StringBuilder();
+
+		foreach (Bot bot in bots) {
+			if (Acceptany.Contains(bot.SteamID)) {
+				Acceptany.Remove(bot.SteamID);
+#pragma warning disable CA1305
+				sb.AppendLine($"{bot.BotName} turned off accepting requests.");
+			} else {
+				Acceptany.Add(bot.SteamID);
+				sb.AppendLine($"{bot.BotName} turned on accepting requests.");
+			}
+		}
+
+		return Task.FromResult(ipc ? sb.ToString().TrimEnd() : FormatStaticResponse(sb.ToString().TrimEnd()))!;
+#pragma warning restore CA1305
+	}
+
+	private static Task<string?> ToggleAcceptAllWithoutBot(Bot bot, EAccess access, bool ipc) {
+		if (access < EAccess.Master) {
+			return Task.FromResult<string?>(null);
+		}
+
+		if (!bot.IsConnectedAndLoggedOn) {
+			return Task.FromResult(FormatBotResponse(bot, "Bot is not logged in."))!;
+		}
+
+		if (Acceptany.Contains(bot.SteamID)) {
+			Acceptany.Remove(bot.SteamID);
+#pragma warning disable CA1305
+			return Task.FromResult(ipc ? $"{bot.BotName} turned off accepting requests." : FormatBotResponse(bot, "turned off accepting requests."))!;
+		}
+
+		Acceptany.Add(bot.SteamID);
+
+		return Task.FromResult(ipc ? $"{bot.BotName} turned on accepting requests." : FormatBotResponse(bot, "turned on accepting requests."))!;
+#pragma warning restore CA1305
+	}
+
+	public static async Task<string?> AddFriendWithBot(EAccess access, string botName, string targets, bool ipc) {
+		if (string.IsNullOrEmpty(botName) || string.IsNullOrEmpty(targets)) {
+			ASF.ArchiLogger.LogNullError(null, nameof(botName) + " || " + nameof(targets));
 
 			return ipc ? "Incorrect parameters" : FormatStaticResponse("Incorrect parameters.");
 		}
@@ -60,7 +121,7 @@ internal sealed class FriendManager : IBotCommand2, IBotFriendRequest {
 			return ipc ? "Bot is not logged in." : FormatBotResponse(bot, "Bot is not logged in.");
 		}
 
-		string[] determineList = targetBots.Split(',').Select(static s => s.Trim()).ToArray();
+		string[] determineList = targets.Split(',').Select(static s => s.Trim()).ToArray();
 		List<string> steamIDs = new List<string>();
 		List<string> stringBotList = new List<string>();
 
@@ -116,9 +177,9 @@ internal sealed class FriendManager : IBotCommand2, IBotFriendRequest {
 		return ipc ? sb.ToString().TrimEnd() : FormatBotResponse(bot, sb.ToString().TrimEnd());
 	}
 
-	private static async Task<string?> AddFriendWithoutBot(Bot bot, EAccess access, string targetBots) {
-		if (string.IsNullOrEmpty(targetBots)) {
-			ASF.ArchiLogger.LogNullError(null, nameof(targetBots));
+	private static async Task<string?> AddFriendWithoutBot(Bot bot, EAccess access, string targets) {
+		if (string.IsNullOrEmpty(targets)) {
+			ASF.ArchiLogger.LogNullError(null, nameof(targets));
 
 			return null;
 		}
@@ -131,7 +192,7 @@ internal sealed class FriendManager : IBotCommand2, IBotFriendRequest {
 			return FormatBotResponse(bot, "Bot is not logged in.");
 		}
 
-		string[] determineList = targetBots.Split(',').Select(static s => s.Trim()).ToArray();
+		string[] determineList = targets.Split(',').Select(static s => s.Trim()).ToArray();
 		List<string> steamIDs = new List<string>();
 		List<string> stringBotList = new List<string>();
 
@@ -187,9 +248,9 @@ internal sealed class FriendManager : IBotCommand2, IBotFriendRequest {
 		return FormatBotResponse(bot, sb.ToString().TrimEnd());
 	}
 
-	public static async Task<string?> RemFriendWithBot(EAccess access, string botName, string targetBots, bool ipc) {
-		if (string.IsNullOrEmpty(botName) || string.IsNullOrEmpty(targetBots)) {
-			ASF.ArchiLogger.LogNullError(null, nameof(botName) + " || " + nameof(targetBots));
+	public static async Task<string?> RemFriendWithBot(EAccess access, string botName, string targets, bool ipc) {
+		if (string.IsNullOrEmpty(botName) || string.IsNullOrEmpty(targets)) {
+			ASF.ArchiLogger.LogNullError(null, nameof(botName) + " || " + nameof(targets));
 
 			return ipc ? "Incorrect parameters" : FormatStaticResponse("Incorrect parameters.");
 		}
@@ -201,14 +262,14 @@ internal sealed class FriendManager : IBotCommand2, IBotFriendRequest {
 		}
 
 		if (bot == null) {
-			return ipc ? "Bot not found." : FormatStaticResponse("Bot not found.");
+			return ipc ? "Bot not found." : FormatStaticResponse(ArchiSteamFarm.Localization.Strings.BotNotFound);
 		}
 
 		if (!bot.IsConnectedAndLoggedOn) {
-			return ipc ? "Bot is not logged in." : FormatBotResponse(bot, "Bot is not logged in.");
+			return ipc ? "Bot is not logged in." : FormatBotResponse(bot, ArchiSteamFarm.Localization.Strings.BotNotConnected);
 		}
 
-		string[] determineList = targetBots.Split(',').Select(static s => s.Trim()).ToArray();
+		string[] determineList = targets.Split(',').Select(static s => s.Trim()).ToArray();
 		List<string> steamIDs = new List<string>();
 		List<string> stringBotList = new List<string>();
 
@@ -265,9 +326,9 @@ internal sealed class FriendManager : IBotCommand2, IBotFriendRequest {
 		return ipc ? sb.ToString().TrimEnd() : FormatBotResponse(bot, sb.ToString().TrimEnd());
 	}
 
-	private static async Task<string?> RemFriendWithoutBot(Bot bot, EAccess access, string targetBots) {
-		if (string.IsNullOrEmpty(targetBots)) {
-			ASF.ArchiLogger.LogNullError(null, nameof(targetBots));
+	private static async Task<string?> RemFriendWithoutBot(Bot bot, EAccess access, string targets) {
+		if (string.IsNullOrEmpty(targets)) {
+			ASF.ArchiLogger.LogNullError(null, nameof(targets));
 
 			return null;
 		}
@@ -277,10 +338,10 @@ internal sealed class FriendManager : IBotCommand2, IBotFriendRequest {
 		}
 
 		if (!bot.IsConnectedAndLoggedOn) {
-			return FormatBotResponse(bot, "Bot is not logged in.");
+			return FormatBotResponse(bot, ArchiSteamFarm.Localization.Strings.BotNotConnected);
 		}
 
-		string[] determineList = targetBots.Split(',').Select(static s => s.Trim()).ToArray();
+		string[] determineList = targets.Split(',').Select(static s => s.Trim()).ToArray();
 		List<string> steamIDs = new List<string>();
 		List<string> stringBotList = new List<string>();
 
@@ -335,6 +396,50 @@ internal sealed class FriendManager : IBotCommand2, IBotFriendRequest {
 		}
 #pragma warning restore CA1305
 		return FormatBotResponse(bot, sb.ToString().TrimEnd());
+	}
+
+	private static async Task<string?> RemFriendAllWithoutBot(Bot bot, EAccess access) {
+		if (access < EAccess.Master) {
+			return null;
+		}
+
+		if (!bot.IsConnectedAndLoggedOn) {
+			return FormatBotResponse(bot, "Bot not connected.");
+		}
+
+		int friendCount = bot.SteamFriends.GetFriendCount();
+
+		if (friendCount > 0) {
+			for (int i = 0; i < friendCount; i++) {
+				SteamID steamId = bot.SteamFriends.GetFriendByIndex(i);
+				bot.SteamFriends.RemoveFriend(steamId);
+				await Task.Delay(500).ConfigureAwait(false);
+			}
+
+			return FormatBotResponse(bot, "All friends deleted.");
+		}
+
+		return FormatBotResponse(bot, "You don't have any friends.");
+	}
+
+	private static async Task<string?> RemFriendAllWithBot(EAccess access, string botNames) {
+		if (string.IsNullOrEmpty(botNames)) {
+			throw new ArgumentNullException(nameof(botNames));
+		}
+
+		if (access < EAccess.Master) {
+			return null;
+		}
+
+		HashSet<Bot>? bots = Bot.GetBots(botNames);
+
+		if ((bots == null) || (bots.Count == 0)) {
+			return FormatStaticResponse("Bots not found.");
+		}
+
+		IList<string?> results = await Utilities.InParallel(bots.Select(bot => RemFriendAllWithoutBot(bot, access))).ConfigureAwait(false);
+
+		return results.Any() ? string.Join(Environment.NewLine, results) : null;
 	}
 
 	private static string FormatStaticResponse(string response) => ArchiSteamFarm.Steam.Interaction.Commands.FormatStaticResponse(response);
@@ -342,7 +447,7 @@ internal sealed class FriendManager : IBotCommand2, IBotFriendRequest {
 
 	public Task<bool> OnBotFriendRequest(Bot bot, ulong steamId) {
 		List<ulong>? bots = Bot.GetBots("ASF")?.Select(static b => b.SteamID).ToList();
-		bool approve = bots?.Contains(steamId) ?? false;
+		bool approve = (bots?.Contains(steamId) ?? false) || Acceptany.Contains(bot.SteamID);
 
 		if (approve) {
 			ASF.ArchiLogger.LogGenericInfo($"[FriendManager] {bot.BotName} Accepted friend request from {steamId} ");

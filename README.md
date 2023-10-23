@@ -17,13 +17,13 @@ However I also made 2 commands for convenience as well.
 
 - `addfriend [botname] [botnames | STEAMIDS]` - Adds bot(s)/user(s) to friend list.
 - `remfriend [botname] [botnames | STEAMIDS]` - Removes bot(s)/user(s) from friend list.
+- `acceptany [botnames]` - Turn on accepting any friend request for bot(s).
+- `remfriendall [botnames]` - Remove all of the friends from bot(s).
 
 ## Planned
 These are things I plan to add for now...
 - [x] IPC Api
-- [ ] Utilites.Inparallel
-- [ ] StringBuilder Alternative
-- [ ] Setting for accepting any friend request.
+- [x] Setting for accepting any friend request.
 ## Inspirations & Sources
 - [ASF-PluginTemplate](https://github.com/JustArchiNET/ASF-PluginTemplate)
 - [ASF-Wiki](https://github.com/JustArchiNET/ArchiSteamFarm/wiki/Plugins)
