@@ -59,7 +59,7 @@ internal sealed class FriendManager : IBotCommand2, IBotFriendRequest {
 		HashSet<Bot>? bots = Bot.GetBots(botNames);
 
 		if (bots == null) {
-			return Task.FromResult(ipc ? "Bot not found." : FormatStaticResponse("Bot not found."))!;
+			return Task.FromResult(ipc ? "Bot not found." : FormatStaticResponse(ArchiSteamFarm.Localization.Strings.BotNotFound))!;
 		}
 
 		StringBuilder sb = new StringBuilder();
@@ -89,7 +89,7 @@ internal sealed class FriendManager : IBotCommand2, IBotFriendRequest {
 		}
 
 		if (!bot.IsConnectedAndLoggedOn) {
-			return Task.FromResult(FormatBotResponse(bot, "Bot is not logged in."))!;
+			return Task.FromResult(FormatBotResponse(bot, ArchiSteamFarm.Localization.Strings.BotNotConnected))!;
 		}
 
 		if (Acceptany.Contains(bot.SteamID)) {
@@ -118,11 +118,11 @@ internal sealed class FriendManager : IBotCommand2, IBotFriendRequest {
 		}
 
 		if (bot == null) {
-			return ipc ? "Bot not found." : FormatStaticResponse("Bot not found.");
+			return ipc ? "Bot not found." : FormatStaticResponse(ArchiSteamFarm.Localization.Strings.BotNotFound);
 		}
 
 		if (!bot.IsConnectedAndLoggedOn) {
-			return ipc ? "Bot is not logged in." : FormatBotResponse(bot, "Bot is not logged in.");
+			return ipc ? "Bot is not logged in." : FormatBotResponse(bot, ArchiSteamFarm.Localization.Strings.BotNotConnected);
 		}
 
 		string[] determineList = targets.Split(',').Select(static s => s.Trim()).ToArray();
@@ -193,7 +193,7 @@ internal sealed class FriendManager : IBotCommand2, IBotFriendRequest {
 		}
 
 		if (!bot.IsConnectedAndLoggedOn) {
-			return FormatBotResponse(bot, "Bot is not logged in.");
+			return FormatBotResponse(bot, ArchiSteamFarm.Localization.Strings.BotNotConnected);
 		}
 
 		string[] determineList = targets.Split(',').Select(static s => s.Trim()).ToArray();
@@ -408,7 +408,7 @@ internal sealed class FriendManager : IBotCommand2, IBotFriendRequest {
 		}
 
 		if (!bot.IsConnectedAndLoggedOn) {
-			return FormatBotResponse(bot, "Bot not connected.");
+			return FormatBotResponse(bot, ArchiSteamFarm.Localization.Strings.BotNotConnected);
 		}
 
 		int friendCount = bot.SteamFriends.GetFriendCount();
